@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Address Geocoder</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+        .container { max-width: 700px; margin: 40px auto; padding: 0 20px; }
+        h1 { text-align: center; margin-bottom: 30px; color: #1a1a2e; }
+        .card { background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .flash { padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .flash.error { background: #f8d7da; color: #721c24; border-color: #f5c6cb; }
+        label { display: block; font-weight: 600; margin-bottom: 8px; }
+        input[type="file"] { display: block; margin-bottom: 16px; }
+        textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-family: inherit; font-size: 14px; resize: vertical; margin-bottom: 16px; }
+        button { background: #1a1a2e; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #16213e; }
+        .divider { text-align: center; color: #999; margin: 20px 0; font-size: 14px; position: relative; }
+        .divider::before, .divider::after { content: ""; position: absolute; top: 50%; width: 40%; height: 1px; background: #ddd; }
+        .divider::before { left: 0; }
+        .divider::after { right: 0; }
+        .results { display: flex; gap: 12px; flex-wrap: wrap; }
+        .results a { display: inline-block; padding: 10px 20px; background: #0f3460; color: white; text-decoration: none; border-radius: 6px; }
+        .results a:hover { background: #16213e; }
+        .note { color: #666; font-size: 14px; margin-top: 8px; }
+        .tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 2px solid #ddd; }
+        .tabs a { padding: 10px 20px; text-decoration: none; color: #666; font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .tabs a:hover { color: #1a1a2e; }
+        .tabs a.active { color: #1a1a2e; border-bottom-color: #1a1a2e; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Property Address Geocoder</h1>
+
+        <div class="tabs">
+            <a href="/" class="active">Upload / Enter</a>
+            <a href="/addresses">Saved Addresses</a>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        {% for msg in messages %}
+        <div class="flash">{{ msg }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <h2>Upload Addresses</h2>
+            <p class="note">Upload a CSV or Excel file with an "address" column.</p>
+            <br>
+            <form method="POST" action="/upload" enctype="multipart/form-data">
+                <label for="file">Select file:</label>
+                <input type="file" name="file" id="file" accept=".csv,.xls,.xlsx" required>
+                <button type="submit">Process Addresses</button>
+            </form>
+            <p class="note">Note: Geocoding uses OpenStreetMap (1 address/sec). Large files will take time.</p>
+
+            <div class="divider">OR</div>
+
+            <h2>Enter Addresses Manually</h2>
+            <p class="note">Type or paste addresses below, one per line.</p>
+            <br>
+            <form method="POST" action="/add-address">
+                <label for="addresses">Addresses:</label>
+                <textarea name="addresses" id="addresses" rows="5" placeholder="123 Main St, Chicago, IL&#10;456 Oak Ave, New York, NY&#10;789 Pine Rd, Los Angeles, CA" required></textarea>
+                <button type="submit">Process Addresses</button>
+            </form>
+        </div>
+
+        {% if has_results %}
+        <div class="card">
+            <h2>Results</h2>
+            <div class="results">
+                <a href="/heatmap">View Heatmap</a>
+                <a href="/download">Download Enriched CSV</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>

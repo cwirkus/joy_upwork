@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Property Heatmap</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .header { background: #1a1a2e; color: white; padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .header a { color: white; text-decoration: none; padding: 6px 14px; border: 1px solid white; border-radius: 4px; }
+        .header a:hover { background: rgba(255,255,255,0.1); }
+        iframe { width: 100%; height: calc(100vh - 48px); border: none; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <strong>Property Heatmap</strong>
+        <a href="/">Back to Home</a>
+    </div>
+    <iframe src="/heatmap-raw"></iframe>
+</body>
+</html>

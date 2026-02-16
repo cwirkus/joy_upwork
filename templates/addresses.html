@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Saved Addresses - Property Address Geocoder</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; }
+        .container { max-width: 800px; margin: 40px auto; padding: 0 20px; }
+        h1 { text-align: center; margin-bottom: 30px; color: #1a1a2e; }
+        .card { background: white; border-radius: 8px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        .flash { padding: 12px 16px; border-radius: 6px; margin-bottom: 16px; background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .tabs { display: flex; gap: 0; margin-bottom: 24px; border-bottom: 2px solid #ddd; }
+        .tabs a { padding: 10px 20px; text-decoration: none; color: #666; font-weight: 600; border-bottom: 2px solid transparent; margin-bottom: -2px; }
+        .tabs a:hover { color: #1a1a2e; }
+        .tabs a.active { color: #1a1a2e; border-bottom-color: #1a1a2e; }
+        button { background: #1a1a2e; color: white; border: none; padding: 12px 24px; border-radius: 6px; cursor: pointer; font-size: 16px; }
+        button:hover { background: #16213e; }
+        .btn-sm { padding: 6px 12px; font-size: 13px; background: #dc3545; }
+        .btn-sm:hover { background: #c82333; }
+        .btn-process { background: #0f3460; margin-bottom: 20px; }
+        .btn-process:hover { background: #16213e; }
+        .address-list { list-style: none; }
+        .address-list li { display: flex; align-items: center; padding: 12px 0; border-bottom: 1px solid #eee; gap: 10px; }
+        .address-list li:last-child { border-bottom: none; }
+        .address-num { color: #999; font-size: 13px; min-width: 28px; }
+        .address-link { flex: 1; text-decoration: none; color: #1a1a2e; font-weight: 500; }
+        .address-link:hover { color: #0f3460; text-decoration: underline; }
+        .address-text { flex: 1; color: #333; }
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-info { background: #d1ecf1; color: #0c5460; }
+        .badge-muted { background: #e9ecef; color: #6c757d; }
+        .empty { color: #999; text-align: center; padding: 30px 0; }
+        .count { color: #666; font-size: 14px; margin-bottom: 16px; }
+        .results { display: flex; gap: 12px; flex-wrap: wrap; }
+        .results a { display: inline-block; padding: 10px 20px; background: #0f3460; color: white; text-decoration: none; border-radius: 6px; }
+        .results a:hover { background: #16213e; }
+        .legend { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; font-size: 12px; color: #666; }
+        .legend-item { display: flex; align-items: center; gap: 4px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Property Address Geocoder</h1>
+
+        <div class="tabs">
+            <a href="/">Upload / Enter</a>
+            <a href="/addresses" class="active">Saved Addresses</a>
+        </div>
+
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        {% for msg in messages %}
+        <div class="flash">{{ msg }}</div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        <div class="card">
+            <h2>Saved Addresses</h2>
+            <p class="count">{{ count }} address(es) stored</p>
+
+            {% if address_data %}
+            <form method="POST" action="/process-saved" style="margin-bottom: 16px;">
+                <button type="submit" class="btn-process">Process All Addresses</button>
+            </form>
+
+            <div class="legend">
+                <span class="legend-item"><span class="badge badge-danger">High</span> 10+ nearby</span>
+                <span class="legend-item"><span class="badge badge-warning">Medium</span> 5-9 nearby</span>
+                <span class="legend-item"><span class="badge badge-info">Low</span> 3-4 nearby</span>
+                <span class="legend-item"><span class="badge badge-muted">Isolated</span> no cluster</span>
+            </div>
+
+            <ul class="address-list">
+                {% for entry in address_data %}
+                <li>
+                    <span class="address-num">{{ loop.index }}</span>
+                    {% if entry.geocoded %}
+                    <a href="/view-address/{{ entry.index }}" class="address-link">{{ entry.address }}</a>
+                    {% else %}
+                    <span class="address-text">{{ entry.address }}</span>
+                    {% endif %}
+                    <span class="badge badge-{{ entry.badge }}">{{ entry.density }}</span>
+                    <form method="POST" action="/delete-address" style="margin:0;">
+                        <input type="hidden" name="address" value="{{ entry.address }}">
+                        <button type="submit" class="btn-sm">Remove</button>
+                    </form>
+                </li>
+                {% endfor %}
+            </ul>
+            {% else %}
+            <p class="empty">No addresses saved yet. Go to "Upload / Enter" to add some.</p>
+            {% endif %}
+        </div>
+
+        {% if has_results %}
+        <div class="card">
+            <h2>Results</h2>
+            <div class="results">
+                <a href="/heatmap">View Heatmap</a>
+                <a href="/download">Download Enriched CSV</a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</body>
+</html>
