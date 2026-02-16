@@ -1,0 +1,8 @@
+pandas
+openpyxl
+geopy
+scikit-learn
+folium
+flask
+numpy
+gunicorn
