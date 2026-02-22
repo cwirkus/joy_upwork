@@ -6,6 +6,67 @@ import pandas as pd
 from geopy.geocoders import Nominatim
 from geopy.extra.rate_limiter import RateLimiter
 
+# US state abbreviation lookup — used when no state column is present
+_US_STATES = {
+    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR",
+    "california": "CA", "colorado": "CO", "connecticut": "CT", "delaware": "DE",
+    "florida": "FL", "georgia": "GA", "hawaii": "HI", "idaho": "ID",
+    "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
+    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD",
+    "massachusetts": "MA", "michigan": "MI", "minnesota": "MN", "mississippi": "MS",
+    "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV",
+    "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY",
+    "north carolina": "NC", "north dakota": "ND", "ohio": "OH", "oklahoma": "OK",
+    "oregon": "OR", "pennsylvania": "PA", "rhode island": "RI", "south carolina": "SC",
+    "south dakota": "SD", "tennessee": "TN", "texas": "TX", "utah": "UT",
+    "vermont": "VT", "virginia": "VA", "washington": "WA", "west virginia": "WV",
+    "wisconsin": "WI", "wyoming": "WY",
+}
+
+# All known state abbreviations (both directions)
+_STATE_ABBRS = set(_US_STATES.values()) | set(s.upper() for s in _US_STATES)
+
+
+def _build_fallback_queries(address):
+    """
+    Generate a list of address strings to try in order.
+    Handles cases where state or country info is missing.
+    """
+    queries = [address]  # Original first
+
+    parts = [p.strip() for p in address.split(",")]
+
+    # Check if any part looks like a US state already
+    has_state = any(
+        p.upper() in _STATE_ABBRS or p.lower() in _US_STATES for p in parts
+    )
+    has_usa = any(p.upper() in ("USA", "US", "UNITED STATES") for p in parts)
+
+    if not has_usa:
+        # Try with USA appended
+        queries.append(address + ", USA")
+
+    if not has_state and not has_usa and len(parts) >= 2:
+        # Try inserting "USA" and hope Nominatim resolves the country
+        # Also try street + last part (usually city or zip) + USA
+        queries.append(f"{parts[0]}, {parts[-1]}, USA")
+
+    return queries
+
+
+def _geocode_with_fallback(geocode, address):
+    """Try multiple query formats until one returns a result."""
+    queries = _build_fallback_queries(address)
+    for query in queries:
+        try:
+            location = geocode(query, addressdetails=True)
+            if location:
+                return location, query
+        except Exception:
+            pass
+        time.sleep(1)  # extra delay between fallback attempts
+    return None, None
+
 
 def geocode_addresses(df):
     """Add latitude, longitude, city, and zip_code columns to the DataFrame."""
@@ -21,8 +82,10 @@ def geocode_addresses(df):
     for i, address in enumerate(df["address"]):
         print(f"Geocoding {i + 1}/{total}: {address}")
         try:
-            location = geocode(address, addressdetails=True)
+            location, matched_query = _geocode_with_fallback(geocode, address)
             if location:
+                if matched_query != address:
+                    print(f"  -> Found via: {matched_query}")
                 latitudes.append(location.latitude)
                 longitudes.append(location.longitude)
                 raw = location.raw.get("address", {})
@@ -31,7 +94,7 @@ def geocode_addresses(df):
                 )
                 zip_codes.append(raw.get("postcode", ""))
             else:
-                print(f"  -> Not found")
+                print(f"  -> Not found (tried {len(_build_fallback_queries(address))} formats)")
                 latitudes.append(None)
                 longitudes.append(None)
                 cities.append("")
