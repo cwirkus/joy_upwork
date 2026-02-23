@@ -214,7 +214,7 @@ def upload():
         flash(f"Could not read file: {e}")
         return redirect(url_for("index"))
 
-    if not _start_pipeline(df):
+    if not _start_pipeline(df, save_to_addresses=True):
         flash("A job is already running. Please wait for it to finish.")
         return redirect(url_for("processing"))
 
