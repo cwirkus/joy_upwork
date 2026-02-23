@@ -5,6 +5,82 @@ import sys
 import pandas as pd
 
 
+# Street suffix abbreviations — used to find where street ends and city begins
+_STREET_SUFFIXES = (
+    "STREET", "ST",
+    "AVENUE", "AVE",
+    "COURT", "CT",
+    "DRIVE", "DR",
+    "LANE", "LN",
+    "WAY",
+    "BOULEVARD", "BLVD",
+    "ROAD", "RD",
+    "CIRCLE", "CIR",
+    "LOOP",
+    "PLACE", "PL",
+    "TERRACE", "TER",
+    "TRAIL", "TRL",
+    "HIGHWAY", "HWY",
+    "PARKWAY", "PKWY",
+    "CRESCENT", "CRES",
+    "CLOSE",
+    "COURT",
+    "GROVE", "GRV",
+    "HILL",
+    "RIDGE",
+    "RUN",
+    "BEND",
+    "PASS",
+    "PATH",
+    "POINT", "PT",
+    "SQUARE", "SQ",
+    "CROSSING", "XING",
+)
+
+# Regex that matches: {number} ... {suffix} {CITY ...} {5-digit-zip}
+_COMBINED_PATTERN = re.compile(
+    r"^(\d+\s+\S.*?\s+(?:" + "|".join(_STREET_SUFFIXES) + r"))\s+(.*?)\s+(\d{5})(?:\.\d+)?$",
+    re.IGNORECASE,
+)
+
+# Also match when there's a state abbr before zip: ... CT BAKERSFIELD CA 93309
+_COMBINED_WITH_STATE_PATTERN = re.compile(
+    r"^(\d+\s+\S.*?\s+(?:" + "|".join(_STREET_SUFFIXES) + r"))\s+(.*?)\s+([A-Z]{2})\s+(\d{5})(?:\.\d+)?$",
+    re.IGNORECASE,
+)
+
+
+def _parse_combined_address(addr):
+    """
+    Parse a no-comma address string like '108 DURHAM CT BAKERSFIELD 93309'
+    into '108 DURHAM CT, BAKERSFIELD, 93309, USA'.
+    Returns the reformatted string, or the original if it can't be parsed.
+    """
+    addr = addr.strip()
+
+    # Try with state abbr: 108 DURHAM CT BAKERSFIELD CA 93309
+    m = _COMBINED_WITH_STATE_PATTERN.match(addr)
+    if m:
+        street, city, state, zipcode = m.group(1), m.group(2), m.group(3), m.group(4)
+        return f"{street.strip()}, {city.strip()}, {state.upper()}, {zipcode}, USA"
+
+    # Try without state: 108 DURHAM CT BAKERSFIELD 93309
+    m = _COMBINED_PATTERN.match(addr)
+    if m:
+        street, city, zipcode = m.group(1), m.group(2), m.group(3)
+        return f"{street.strip()}, {city.strip()}, {zipcode}, USA"
+
+    return addr  # return unchanged if pattern doesn't match
+
+
+def _looks_like_combined(addr):
+    """Return True if address has no commas and looks like a combined street+city+zip string."""
+    if "," in addr:
+        return False
+    # Has a 5-digit zip somewhere
+    return bool(re.search(r"\b\d{5}\b", addr))
+
+
 # Common column name variations (lowercase) mapped to standard component names
 COLUMN_ALIASES = {
     "address": "street",
@@ -146,6 +222,15 @@ def load_and_clean(file_path):
     df["address"] = df["address"].astype(str).str.strip()
     df["address"] = df["address"].str.replace(r"\s+", " ", regex=True)
     df = df[df["address"] != ""]
+
+    # Reformat combined no-comma addresses like "108 DURHAM CT BAKERSFIELD 93309"
+    combined_mask = df["address"].apply(_looks_like_combined)
+    if combined_mask.any():
+        count = combined_mask.sum()
+        df.loc[combined_mask, "address"] = df.loc[combined_mask, "address"].apply(
+            _parse_combined_address
+        )
+        print(f"Reformatted {count} combined address(es) into comma-separated format.")
 
     # Filter out disclaimer/junk rows
     before_filter = len(df)
